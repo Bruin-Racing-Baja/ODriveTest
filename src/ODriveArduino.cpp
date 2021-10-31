@@ -25,6 +25,11 @@ void ODriveArduino::SetPosition(int motor_number, float position, float velocity
     SetPosition(motor_number, position, velocity_feedforward, 0.0f);
 }
 
+void ODriveArduino::EncoderConfig(int motor_number) {
+    serial_ << "w " << motor_number << ".encoder.config.mode 1" << "\n";
+    serial_ << "w " << motor_number << ".encoder.config.cpr 42" << "\n";
+}
+
 void ODriveArduino::SetPosition(int motor_number, float position, float velocity_feedforward, float current_feedforward) {
     serial_ << "p " << motor_number  << " " << position << " " << velocity_feedforward << " " << current_feedforward << "\n";
 }
@@ -62,7 +67,7 @@ float ODriveArduino::GetPosition(int motor_number) {
 int32_t ODriveArduino::readInt() {
     return readString().toInt();
 }
-
+ 
 bool ODriveArduino::run_state(int axis, int requested_state, bool wait_for_idle, float timeout) {
     int timeout_ctr = (int)(timeout * 10.0f);
     serial_ << "w axis" << axis << ".requested_state " << requested_state << '\n';
@@ -92,4 +97,37 @@ String ODriveArduino::readString() {
         str += c;
     }
     return str;
+}
+
+String ODriveArduino::DumpErrors(){
+    String output= "";
+    output += "system: ";
+
+    serial_<< "r error\n";
+    output += ODriveArduino::readString();
+    for (int axis = 0; axis < 2; ++axis){
+        output += "\naxis";
+        output += axis;
+
+        output += "\n  axis: ";
+        serial_<< "r axis"<<axis<<".error\n";
+        output += ODriveArduino::readString();
+
+        output += "\n  motor: ";
+        serial_<< "r axis"<<axis<<".motor.error\n";
+        output += ODriveArduino::readString();
+
+        output += "\n  sensorless_estimator: ";
+        serial_<< "r axis"<<axis<<".sensorless_estimator.error\n";
+        output += ODriveArduino::readString();
+
+        output += "\n  encoder: ";
+        serial_<< "r axis"<<axis<<".encoder.error\n";
+        output += ODriveArduino::readString();
+
+        output += "\n  controller: ";
+        serial_<< "r axis"<<axis<<".controller.error\n";
+        output += ODriveArduino::readString();
+    }
+    return output;
 }

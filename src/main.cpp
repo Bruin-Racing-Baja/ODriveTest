@@ -1,7 +1,10 @@
+#include "Arduino.h"
+
 // includes
 #include <HardwareSerial.h>
 #include <SoftwareSerial.h>
 #include <ODriveArduino.h>
+
 // Printing with stream operator helper functions
 template<class T> inline Print& operator <<(Print &obj,     T arg) { obj.print(arg);    return obj; }
 template<>        inline Print& operator <<(Print &obj, float arg) { obj.print(arg, 4); return obj; }
@@ -22,22 +25,11 @@ template<>        inline Print& operator <<(Print &obj, float arg) { obj.print(a
 // See https://www.pjrc.com/teensy/td_uart.html for other options on Teensy
 HardwareSerial& odrive_serial = Serial1;
 
-// Arduino Mega or Due - Serial1
-// pin 19: RX - connect to ODrive TX
-// pin 18: TX - connect to ODrive RX
-// See https://www.arduino.cc/reference/en/language/functions/communication/serial/ for other options
-// HardwareSerial& odrive_serial = Serial1;
-
-// Arduino without spare serial ports (such as Arduino UNO) have to use software serial.
-// Note that this is implemented poorly and can lead to wrong data sent or read.
-// pin 8: RX - connect to ODrive TX
-// pin 9: TX - connect to ODrive RX
-// SoftwareSerial odrive_serial(8, 9);
 
 
 // ODrive object
 ODriveArduino odrive(odrive_serial);
-
+//serial_(Serial1) {}
 void setup() {
   // ODrive uses 115200 baud
   odrive_serial.begin(115200);
@@ -63,10 +55,10 @@ void setup() {
   Serial.println("Send the character 's' to exectue test move");
   Serial.println("Send the character 'b' to read bus voltage");
   Serial.println("Send the character 'p' to read motor positions in a 10s loop");
+  odrive.run_state(0, 1, true);
 }
 
 void loop() {
-
   if (Serial.available()) {
     char c = Serial.read();
 
@@ -75,29 +67,27 @@ void loop() {
       int motornum = c-'0';
       int requested_state;
 
-      requested_state = AXIS_STATE_MOTOR_CALIBRATION;
+      //odrive.EncoderConfig(c);
+      requested_state = 3;
       Serial << "Axis" << c << ": Requesting state " << requested_state << '\n';
       if(!odrive.run_state(motornum, requested_state, true)) return;
-
-      requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION;
-      Serial << "Axis" << c << ": Requesting state " << requested_state << '\n';
-      if(!odrive.run_state(motornum, requested_state, true, 25.0f)) return;
-
-      requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL;
-      Serial << "Axis" << c << ": Requesting state " << requested_state << '\n';
-      if(!odrive.run_state(motornum, requested_state, false /*don't wait*/)) return;
+      Serial<<odrive.DumpErrors()<<"\n";
     }
 
     // Sinusoidal test move
     if (c == 's') {
-      Serial.println("Executing test move");
-      for (float ph = 0.0f; ph < 6.28318530718f; ph += 0.01f) {
-        float pos_m0 = 2.0f * cos(ph);
-        float pos_m1 = 2.0f * sin(ph);
-        odrive.SetPosition(0, pos_m0);
-        odrive.SetPosition(1, pos_m1);
-        delay(5);
-      }
+        Serial.println("Executing test spin");
+        odrive.run_state(0, 8, true);
+
+        for(float i = 10; i<20; i += 1) {
+            Serial<<"Velocity: "<<i<<"\n";
+            odrive.SetVelocity(0, i);
+            delay(1000);
+        }
+        odrive.SetVelocity(0, 0);
+        odrive.run_state(0, 1, true);
+
+        Serial<<odrive.DumpErrors()<<"\n";
     }
 
     // Read bus voltage
@@ -112,7 +102,7 @@ void loop() {
       unsigned long start = millis();
       while(millis() - start < duration) {
         for (int motor = 0; motor < 2; ++motor) {
-          Serial << odrive.GetPosition(motor) << '\t';
+          Serial << odrive.GetVelocity(motor) << '\t';
         }
         Serial << '\n';
       }

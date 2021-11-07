@@ -24,7 +24,7 @@ template<>        inline Print& operator <<(Print &obj, float arg) { obj.print(a
 // pin 1: TX - connect to ODrive RX
 // See https://www.pjrc.com/teensy/td_uart.html for other options on Teensy
 HardwareSerial& odrive_serial = Serial1;
-
+int input_pot = 14;
 
 
 // ODrive object
@@ -44,17 +44,13 @@ void setup() {
   // In this example we set the same parameters to both motors.
   // You can of course set them different if you want.
   // See the documentation or play around in odrivetool to see the available parameters
-  for (int axis = 0; axis < 2; ++axis) {
-    odrive_serial << "w axis" << axis << ".controller.config.vel_limit " << 10.0f << '\n';
-    odrive_serial << "w axis" << axis << ".motor.config.current_lim " << 11.0f << '\n';
-    // This ends up writing something like "w axis0.motor.config.current_lim 10.0\n"
-  }
 
   Serial.println("Ready!");
   Serial.println("Send the character '0' or '1' to calibrate respective motor (you must do this before you can command movement)");
   Serial.println("Send the character 's' to exectue test move");
   Serial.println("Send the character 'b' to read bus voltage");
   Serial.println("Send the character 'p' to read motor positions in a 10s loop");
+  Serial.println("Send the character 'q' for potentiometer velocity control");
   odrive.run_state(0, 1, true);
 }
 
@@ -74,18 +70,31 @@ void loop() {
       Serial<<odrive.DumpErrors()<<"\n";
     }
 
+    // Follow Potentiometer for Velocity
+    if (c == 'q') {
+      float goalVel = 0;
+      odrive.run_state(0, 8, false, 10);
+      for(float i = 0; i <100; i++) {
+        goalVel = map(analogRead(input_pot), 0, 1023, 0, 20);
+        odrive.SetVelocity(0, goalVel);
+        delay(100);
+      }
+      odrive.SetVelocity(0, 0);
+      odrive.run_state(0, 1, false, 10);
+    }
+
     // Sinusoidal test move
     if (c == 's') {
         Serial.println("Executing test spin");
-        odrive.run_state(0, 8, true);
+        odrive.run_state(0, 8, false, 10);
 
-        for(float i = 10; i<20; i += 1) {
+        for(float i = 5; i<20; i += 1) {
             Serial<<"Velocity: "<<i<<"\n";
             odrive.SetVelocity(0, i);
             delay(1000);
         }
         odrive.SetVelocity(0, 0);
-        odrive.run_state(0, 1, true);
+        odrive.run_state(0, 1, false, 10);
 
         Serial<<odrive.DumpErrors()<<"\n";
     }

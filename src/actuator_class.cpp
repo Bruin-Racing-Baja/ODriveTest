@@ -1,32 +1,54 @@
 #include <actuator.h>
 #include <HardwareSerial.h>
 #include <SoftwareSerial.h>
+#include <Encoder.h>
 
 // Print with stream operator
 template<class T> inline Print& operator <<(Print &obj,     T arg) { obj.print(arg);    return obj; }
 template<>        inline Print& operator <<(Print &obj, float arg) { obj.print(arg, 4); return obj; }
 
-Actuator::Actuator(HardwareSerial& serial, const int egTooth, const int gbTooth, const int inboundHall, const int outboundHall): serial_(serial){
+Actuator::Actuator(HardwareSerial& serial, const int enc_A, const int enc_B, const int egTooth, const int gbTooth, const int hall_inbound, const int hall_outbound)
+    :serial_(serial), encoder(enc_A, enc_B){
     // save pin values
     m_egTooth = egTooth;
     m_gbTooth = gbTooth;
-    m_inboundHall = inboundHall;
-    m_outboundHall = outboundHall;
+    m_hall_inbound = hall_inbound;
+    m_hall_outbound = hall_outbound;
 
     hasRun = false;
 }
 
 void Actuator::initialize(){
+    Serial.println("Connecting to Odrive!");
     serial_.begin(115200);
 
     Serial.begin(115200);
     while (!Serial) ; // wait for Arduino Serial Monitor to open
 
-    Serial.println("Testing!");
-
     run_state(0, 1, true, 0);
 
-    Serial.println("Ready!");
+    Serial.println("Connected");
+    Serial.println("Calibrating");
+
+    run_state(0, 8, false, 0);
+    while (digitalReadFast(m_hall_outbound) == 1) {
+        set_velocity(10);
+        m_encoder_outbound = encoder.read();
+    }
+    Serial.print("encoder outbound: ");
+    Serial.println(m_encoder_outbound);
+
+
+    while (digitalReadFast(m_hall_inbound) == 1) {
+        set_velocity(-10);
+        m_encoder_inbound = encoder.read();
+    }
+    Serial.print("encoder inbound: ");
+    Serial.println(m_encoder_inbound);
+
+    set_velocity(0);
+    run_state(0, 1, false, 0);
+    
 }
 
 void Actuator::control_function(){
@@ -112,4 +134,8 @@ String Actuator::dump_errors(){
         output += Actuator::read_string();
     }
     return output;
+}
+
+int Actuator::get_encoder_pos(){
+    return encoder.read();
 }

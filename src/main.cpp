@@ -3,7 +3,7 @@
 // includes
 #include <HardwareSerial.h>
 #include <SoftwareSerial.h>
-#include <ODriveArduino.h>
+#include <Encoder.h>
 
 #include <actuator.h>
 // Printing with stream operator helper functions
@@ -27,14 +27,22 @@
 
 //HardwareSerial& odrive_serial = Serial1;
 
-int input_pot = 14;
+#define input_pot 14
 
+#define enc_A 20
+#define enc_B 21
+#define enc_PPR 2048
+#define enc_index 22
+
+#define hall_inbound 10
+#define hall_outbound 11
 
 // ODrive object
 //ODriveArduino odrive(Serial1);
 //serial_(Serial1) {}
 
-Actuator actuator(Serial1, 0, 0, 0, 0);
+Actuator actuator(Serial1, enc_A, enc_B, 0, 0, hall_inbound, hall_outbound);
+//Encoder encoder(enc_A, enc_B);
 
 void setup() {
   actuator.initialize();
@@ -63,7 +71,14 @@ void setup() {
 }
 
 void loop() {
-  actuator.control_function();
+  //actuator.control_function();
+
+  // Serial.print(digitalReadFast(hall_inbound));
+  // Serial.print(", ");
+  // Serial.print(digitalReadFast(hall_outbound));
+  // Serial.print(", ");
+  // Serial.println(actuator.get_encoder_pos());
+  
   // if (Serial.available()) {
   //   char c = Serial.read();
 

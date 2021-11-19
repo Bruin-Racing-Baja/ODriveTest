@@ -2,19 +2,25 @@
 #include <HardwareSerial.h>
 #include <SoftwareSerial.h>
 #include <Encoder.h>
+#include <Arduino.h>
+#include <TimerOne.h>
 
 // Print with stream operator
 template<class T> inline Print& operator <<(Print &obj,     T arg) { obj.print(arg);    return obj; }
 template<>        inline Print& operator <<(Print &obj, float arg) { obj.print(arg, 4); return obj; }
 
-Actuator::Actuator(HardwareSerial& serial, const int enc_A, const int enc_B, const int egTooth, const int gbTooth, const int hall_inbound, const int hall_outbound)
+void test(){
+    int i = 0;
+}
+
+Actuator::Actuator(HardwareSerial& serial, const int enc_A, const int enc_B, const int egTooth, const int gbTooth, const int hall_inbound, const int hall_outbound, const int input_pot)
     :serial_(serial), encoder(enc_A, enc_B){
     // save pin values
     m_egTooth = egTooth;
     m_gbTooth = gbTooth;
     m_hall_inbound = hall_inbound;
     m_hall_outbound = hall_outbound;
-
+    m_input_pot = input_pot;
     hasRun = false;
 }
 
@@ -32,7 +38,7 @@ void Actuator::initialize(){
 
     run_state(0, 8, false, 0);
     while (digitalReadFast(m_hall_outbound) == 1) {
-        set_velocity(10);
+        set_velocity(5);
         m_encoder_outbound = encoder.read();
     }
     Serial.print("encoder outbound: ");
@@ -40,7 +46,7 @@ void Actuator::initialize(){
 
 
     while (digitalReadFast(m_hall_inbound) == 1) {
-        set_velocity(-10);
+        set_velocity(-5);
         m_encoder_inbound = encoder.read();
     }
     Serial.print("encoder inbound: ");
@@ -49,19 +55,22 @@ void Actuator::initialize(){
     set_velocity(0);
     run_state(0, 1, false, 0);
     
+    Timer1.initialize(m_dt);
+    Timer1.attachInterrupt(test);
 }
 
 void Actuator::control_function(){
-    
     if(!hasRun){
         Serial.println("OogaBookga!");
         set_velocity(10);
         run_state(0, 8, false, 0);
         delay(5000);
-        run_state(0, 1, false, 0);
         Serial.println(dump_errors());
         hasRun = true;
     }
+    m_velocity = map(analogRead(m_input_pot), 0, 1024, -20, 20);
+    set_velocity(m_velocity);
+    delay(500);
 }
 
 void Actuator::set_velocity(float velocity) {

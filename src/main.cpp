@@ -41,7 +41,7 @@
 //ODriveArduino odrive(Serial1);
 //serial_(Serial1) {}
 
-Actuator actuator(Serial1, enc_A, enc_B, 0, 0, hall_inbound, hall_outbound);
+Actuator actuator(Serial1, enc_A, enc_B, 0, 0, hall_inbound, hall_outbound, input_pot);
 //Encoder encoder(enc_A, enc_B);
 
 void setup() {
@@ -71,8 +71,8 @@ void setup() {
 }
 
 void loop() {
-  //actuator.control_function();
-
+  actuator.control_function();
+  //Serial.println(analogRead(input_pot));
   // Serial.print(digitalReadFast(hall_inbound));
   // Serial.print(", ");
   // Serial.print(digitalReadFast(hall_outbound));
